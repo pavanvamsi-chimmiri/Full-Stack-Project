@@ -14,7 +14,7 @@ Production-ready full-stack platform for backtesting equity investment strategie
 
 ---
 
-## Complete End-to-End Setup (15 minutes)
+## Complete End-to-End Setup 
 
 ### Step 1: Clone and configure
 
