@@ -109,7 +109,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="John Doe"
+                  placeholder="Enter Full Name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
@@ -123,7 +123,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@company.com"
+                placeholder="Enter Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
