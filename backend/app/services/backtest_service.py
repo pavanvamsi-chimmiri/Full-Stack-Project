@@ -10,6 +10,7 @@ from app.models.company import Company
 from app.models.portfolio_holding import PortfolioHolding
 from app.models.ratio import Ratio
 from app.models.stock_price import StockPrice
+from app.models.user import User
 from app.schemas.backtest import BacktestRequest
 
 logger = get_logger(__name__)
@@ -19,8 +20,9 @@ class BacktestService:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_backtest(self, config: BacktestRequest) -> Backtest:
+    def create_backtest(self, config: BacktestRequest, user: User) -> Backtest:
         backtest = Backtest(
+            user_id=user.id,
             name=config.name or f"Backtest {datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
             status="pending",
             user_inputs=config.model_dump(mode="json"),
@@ -62,6 +64,12 @@ class BacktestService:
         self.db.commit()
         self.db.refresh(backtest)
         return backtest
+
+    def get_backtest(self, backtest_id: int, user_id: int | None = None) -> Backtest | None:
+        query = self.db.query(Backtest).filter(Backtest.id == backtest_id)
+        if user_id is not None:
+            query = query.filter(Backtest.user_id == user_id)
+        return query.first()
 
     def _load_data(self, start_date, end_date) -> tuple[pd.DataFrame, pd.DataFrame, list[dict]]:
         companies = self.db.query(Company).all()
@@ -133,6 +141,3 @@ class BacktestService:
                 )
             )
         self.db.commit()
-
-    def get_backtest(self, backtest_id: int) -> Backtest | None:
-        return self.db.query(Backtest).filter(Backtest.id == backtest_id).first()

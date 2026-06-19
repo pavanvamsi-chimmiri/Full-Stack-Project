@@ -4,5 +4,6 @@ from app.models.financial import Financial
 from app.models.portfolio_holding import PortfolioHolding
 from app.models.ratio import Ratio
 from app.models.stock_price import StockPrice
+from app.models.user import User
 
-__all__ = ["Company", "StockPrice", "Financial", "Ratio", "Backtest", "PortfolioHolding"]
+__all__ = ["User", "Company", "StockPrice", "Financial", "Ratio", "Backtest", "PortfolioHolding"]

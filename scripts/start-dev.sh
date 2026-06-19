@@ -48,7 +48,7 @@ echo "==> Starting backend on http://localhost:8000"
 start_tmux backend-api "$ROOT/backend" "python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
 echo "==> Starting frontend on http://localhost:3000"
-start_tmux frontend-dev "$ROOT/frontend" "npm run dev -- --hostname 0.0.0.0 --port 3000"
+start_tmux frontend-dev "$ROOT/frontend" "BACKEND_URL=http://127.0.0.1:8000 npm run dev -- --hostname 0.0.0.0 --port 3000"
 
 sleep 4
 

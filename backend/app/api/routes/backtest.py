@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.deps import get_current_user
+from app.models.user import User
 from app.schemas.backtest import BacktestRequest, BacktestResponse, BacktestRunResponse
 from app.services.backtest_service import BacktestService
 from app.tasks.backtest_tasks import run_backtest_async
@@ -10,9 +12,13 @@ router = APIRouter(prefix="/backtest", tags=["Backtest"])
 
 
 @router.post("/run", response_model=BacktestRunResponse)
-def run_backtest(config: BacktestRequest, db: Session = Depends(get_db)):
+def run_backtest(
+    config: BacktestRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     service = BacktestService(db)
-    backtest = service.create_backtest(config)
+    backtest = service.create_backtest(config, current_user)
     run_backtest_async.delay(backtest.id)
     return BacktestRunResponse(
         id=backtest.id,
@@ -22,27 +28,38 @@ def run_backtest(config: BacktestRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/run/sync", response_model=BacktestResponse)
-def run_backtest_sync(config: BacktestRequest, db: Session = Depends(get_db)):
-    """Run backtest synchronously (useful for development/testing)."""
+def run_backtest_sync(
+    config: BacktestRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     service = BacktestService(db)
-    backtest = service.create_backtest(config)
+    backtest = service.create_backtest(config, current_user)
     backtest = service.run_backtest(backtest.id)
     return BacktestResponse.model_validate(backtest)
 
 
 @router.get("/{backtest_id}", response_model=BacktestResponse)
-def get_backtest(backtest_id: int, db: Session = Depends(get_db)):
+def get_backtest(
+    backtest_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     service = BacktestService(db)
-    backtest = service.get_backtest(backtest_id)
+    backtest = service.get_backtest(backtest_id, user_id=current_user.id)
     if not backtest:
         raise HTTPException(status_code=404, detail="Backtest not found")
     return BacktestResponse.model_validate(backtest)
 
 
 @router.get("/results/{backtest_id}")
-def get_backtest_results(backtest_id: int, db: Session = Depends(get_db)):
+def get_backtest_results(
+    backtest_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     service = BacktestService(db)
-    backtest = service.get_backtest(backtest_id)
+    backtest = service.get_backtest(backtest_id, user_id=current_user.id)
     if not backtest:
         raise HTTPException(status_code=404, detail="Backtest not found")
     if backtest.status != "completed":

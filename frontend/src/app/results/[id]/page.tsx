@@ -94,21 +94,15 @@ export default function ResultsPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <a href={api.exportUrl("csv", id)} download>
-            <Button variant="outline" size="sm">
-              <Download className="mr-1 h-4 w-4" /> CSV
-            </Button>
-          </a>
-          <a href={api.exportUrl("excel", id)} download>
-            <Button variant="outline" size="sm">
-              <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
-            </Button>
-          </a>
-          <a href={api.exportUrl("pdf", id)} download>
-            <Button variant="outline" size="sm">
-              <FileText className="mr-1 h-4 w-4" /> PDF
-            </Button>
-          </a>
+          <Button variant="outline" size="sm" onClick={() => api.downloadExport("csv", id)}>
+            <Download className="mr-1 h-4 w-4" /> CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => api.downloadExport("excel", id)}>
+            <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => api.downloadExport("pdf", id)}>
+            <FileText className="mr-1 h-4 w-4" /> PDF
+          </Button>
         </div>
       </div>
 

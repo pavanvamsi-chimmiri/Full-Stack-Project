@@ -1,19 +1,24 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.deps import get_current_user
 from app.models.backtest import Backtest
 from app.models.company import Company
+from app.models.user import User
 from app.schemas.dashboard import DashboardResponse, DashboardStats
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
 @router.get("", response_model=DashboardResponse)
-def get_dashboard(db: Session = Depends(get_db)):
-    total_backtests = db.query(Backtest).count()
-    completed = db.query(Backtest).filter(Backtest.status == "completed").all()
+def get_dashboard(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    user_backtests = db.query(Backtest).filter(Backtest.user_id == current_user.id)
+    total_backtests = user_backtests.count()
+    completed = user_backtests.filter(Backtest.status == "completed").all()
 
     cagrs = []
     latest_value = None
@@ -31,6 +36,7 @@ def get_dashboard(db: Session = Depends(get_db)):
 
     recent = (
         db.query(Backtest)
+        .filter(Backtest.user_id == current_user.id)
         .order_by(Backtest.created_at.desc())
         .limit(5)
         .all()

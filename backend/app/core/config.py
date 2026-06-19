@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     APP_NAME: str = "Equity Backtesting Framework"
     APP_VERSION: str = "1.0.0"
 
+    JWT_SECRET_KEY: str = "change-this-secret-key-in-production-use-openssl-rand"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]

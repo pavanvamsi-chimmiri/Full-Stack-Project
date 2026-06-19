@@ -2,11 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.deps import get_current_user
 from app.models.company import Company
-from app.models.financial import Financial
-from app.models.ratio import Ratio
 from app.models.stock_price import StockPrice
-from app.schemas.financial import FinancialListResponse, FinancialResponse, RatioListResponse, RatioResponse
+from app.models.user import User
 from app.schemas.stock import CompanyResponse, StockListResponse, StockPriceResponse
 
 router = APIRouter(prefix="/stocks", tags=["Stocks"])
@@ -19,6 +18,7 @@ def get_stocks(
     sector: str | None = None,
     search: str | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     query = db.query(Company)
     if sector:
@@ -43,6 +43,7 @@ def get_stock_prices(
     start_date: str | None = None,
     end_date: str | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     company = db.query(Company).filter(Company.ticker == ticker).first()
     if not company:

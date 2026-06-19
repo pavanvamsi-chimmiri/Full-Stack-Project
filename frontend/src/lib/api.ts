@@ -1,43 +1,83 @@
 // Use same-origin proxy in browser so remote/cloud access works.
-// Next.js rewrites /api/v1/* -> backend (see next.config.ts).
 function getApiBase(): string {
-  if (typeof window !== "undefined") {
-    return "";
-  }
+  if (typeof window !== "undefined") return "";
   return process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || "http://127.0.0.1:8000";
 }
 
-export class ApiError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ApiError";
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("equity-auth");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.state?.token ?? null;
+  } catch {
+    return null;
   }
 }
 
-async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const base = getApiBase();
-  let res: Response;
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status = 0) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
 
+async function fetchAPI<T>(endpoint: string, options?: RequestInit, auth = true): Promise<T> {
+  const base = getApiBase();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options?.headers as Record<string, string>),
+  };
+
+  if (auth) {
+    const token = getAuthToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+
+  let res: Response;
   try {
-    res = await fetch(`${base}/api/v1${endpoint}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-      },
-    });
+    res = await fetch(`${base}/api/v1${endpoint}`, { ...options, headers });
   } catch {
     throw new ApiError(
-      "Cannot reach the backend API. Start the server with ./scripts/start-dev.sh or docker compose up -d"
+      "Cannot reach the backend API. Start the server with ./scripts/start-dev.sh"
     );
+  }
+
+  if (res.status === 401) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("equity-auth");
+      document.cookie = "auth_token=; path=/; max-age=0";
+      if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/signup")) {
+        window.location.href = "/login";
+      }
+    }
+    throw new ApiError("Session expired. Please sign in again.", 401);
   }
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: `Request failed (${res.status})` }));
-    throw new ApiError(typeof error.detail === "string" ? error.detail : `HTTP ${res.status}`);
+    const detail = typeof error.detail === "string" ? error.detail : `HTTP ${res.status}`;
+    throw new ApiError(detail, res.status);
   }
 
   return res.json();
+}
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  full_name: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  user: AuthUser;
 }
 
 export interface DashboardData {
@@ -75,18 +115,14 @@ export interface BacktestConfig {
     min_value?: number;
     max_value?: number;
   }>;
-  ranking_metrics: Array<{
-    metric: string;
-    direction: string;
-    weight: number;
-  }>;
+  ranking_metrics: Array<{ metric: string; direction: string; weight: number }>;
 }
 
 export interface BacktestResults {
   id: number;
   name: string;
   status: string;
-  analytics: {
+  analytics: Record<string, unknown> & {
     total_return: number;
     cagr: number;
     annual_return: number;
@@ -115,6 +151,20 @@ export interface BacktestResults {
 }
 
 export const api = {
+  register: (email: string, password: string, full_name: string) =>
+    fetchAPI<TokenResponse>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password, full_name }),
+    }, false),
+
+  login: (email: string, password: string) =>
+    fetchAPI<TokenResponse>("/auth/login/json", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }, false),
+
+  getMe: () => fetchAPI<AuthUser>("/auth/me"),
+
   getDashboard: () => fetchAPI<DashboardData>("/dashboard"),
 
   getStocks: (page = 1, pageSize = 50) =>
@@ -143,4 +193,20 @@ export const api = {
 
   exportUrl: (type: "csv" | "excel" | "pdf", backtestId: number) =>
     `/api/v1/export/${type}?backtest_id=${backtestId}`,
+
+  async downloadExport(type: "csv" | "excel" | "pdf", backtestId: number) {
+    const token = getAuthToken();
+    const res = await fetch(`${getApiBase()}/api/v1/export/${type}?backtest_id=${backtestId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new ApiError("Export failed", res.status);
+    const blob = await res.blob();
+    const ext = type === "excel" ? "xlsx" : type;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `backtest_${backtestId}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };
