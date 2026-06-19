@@ -1,0 +1,111 @@
+databases:
+  - name: equity-db
+    databaseName: equity_backtest
+    user: backtest
+    plan: free
+
+services:
+  - type: keyvalue
+    name: equity-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+  - type: web
+    name: equity-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: equity-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: equity-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: equity-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: keyvalue
+          name: equity-redis
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: LOG_LEVEL
+        value: INFO
+      - key: RATE_LIMIT
+        value: 100/minute
+      - key: CORS_ORIGINS
+        fromService:
+          type: web
+          name: equity-frontend
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: worker
+    name: equity-celery-worker
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: celery -A app.core.celery_app worker --loglevel=info
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: equity-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: equity-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: equity-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: keyvalue
+          name: equity-redis
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        fromService:
+          type: web
+          name: equity-backend
+          envVarKey: JWT_SECRET_KEY
+
+  - type: web
+    name: equity-frontend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    buildFilter:
+      paths:
+        - frontend/**
+    envVars:
+      - key: BACKEND_URL
+        fromService:
+          type: web
+          name: equity-backend
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: equity-backend
+          envVarKey: RENDER_EXTERNAL_URL
