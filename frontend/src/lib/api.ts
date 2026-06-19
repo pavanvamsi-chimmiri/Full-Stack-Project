@@ -178,6 +178,17 @@ export const api = {
       body: JSON.stringify(config),
     }),
 
+  /** Canonical: POST /backtest */
+  postBacktest: (config: BacktestConfig) =>
+    fetchAPI<{ id: number; status: string; name: string; results: Record<string, unknown> | null }>("/backtest", {
+      method: "POST",
+      body: JSON.stringify(config),
+    }),
+
+  /** Canonical: GET /results?backtest_id= */
+  getResults: (backtestId: number) =>
+    fetchAPI<BacktestResults>(`/results?backtest_id=${backtestId}`),
+
   runBacktestSync: (config: BacktestConfig) =>
     fetchAPI<{ id: number; status: string }>("/backtest/run/sync", {
       method: "POST",

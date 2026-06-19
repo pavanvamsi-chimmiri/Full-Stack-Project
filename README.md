@@ -1,284 +1,220 @@
-# Equity Backtesting Framework
+# Equity Backtesting Platform
 
-A production-ready, end-to-end equity backtesting platform for Indian markets (NSE/BSE). Build custom investment strategies, run historical backtests with no lookahead bias, and analyze performance with institutional-grade analytics.
-
-## Architecture
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Next.js 15    │────▶│   FastAPI       │────▶│  PostgreSQL     │
-│   Frontend      │     │   Backend       │     │  Database       │
-└─────────────────┘     └────────┬────────┘     └─────────────────┘
-                                 │
-                        ┌────────┴────────┐
-                        │  Celery Worker  │
-                        │  + Redis Beat   │
-                        └─────────────────┘
-```
+Production-ready full-stack platform for backtesting equity investment strategies on Indian markets (NSE/BSE).
 
 ## Tech Stack
 
-| Layer | Technologies |
-|-------|-------------|
-| Frontend | Next.js 15, TypeScript, Tailwind CSS, ShadCN UI, Recharts, React Hook Form, Zustand |
-| Backend | Python FastAPI, Pandas, NumPy, SQLAlchemy, Pydantic, Celery |
-| Database | PostgreSQL 16 |
-| Data Sources | Yahoo Finance API (NSE `.NS` tickers) |
-| Deployment | Docker, Docker Compose |
+| Layer | Technology |
+|-------|-----------|
+| Backend | FastAPI, SQLAlchemy, Pandas, NumPy, yfinance |
+| Database | PostgreSQL |
+| Frontend | Next.js 15, TypeScript, Tailwind CSS, Recharts |
+| Auth | JWT + bcrypt |
+| Deploy | Docker Compose |
 
-## Features
+---
 
-### Module 1: Data Collection Engine
-- Historical OHLCV data for 100+ NSE-listed companies
-- Fundamental data: P&L, Balance Sheet, Cash Flow
-- Financial ratios: ROE, ROCE, PE, PB, PAT, Debt/Equity, EPS, Market Cap
-- Automatic scheduled refresh (daily prices, weekly fundamentals)
+## Complete End-to-End Setup (15 minutes)
 
-### Module 2: Database Design
-- Normalized PostgreSQL schema with indexed tables
-- Companies, stock prices, financials, ratios, backtests, portfolio holdings
-
-### Module 3: Backtest Engine
-- Configurable date range and rebalancing (monthly/quarterly/half-yearly/yearly)
-- Portfolio sizing (Top 10/20/50) with equal, market cap, or metric weighting
-- Multi-filter screening (market cap, ROCE, PAT, etc.)
-- Single and composite metric ranking
-- No future data leakage, proper rebalancing, capital compounding
-
-### Module 4: Performance Analytics
-- CAGR, Total Return, Sharpe Ratio, Sortino Ratio, Max Drawdown, Volatility
-- Win rate, best/worst trade tracking
-- Equity curve and drawdown visualization
-
-### Module 5: Frontend Dashboard
-- Dashboard with portfolio overview
-- Strategy Builder with drag-and-drop ranking
-- Results page with interactive charts
-- CSV, Excel, and PDF export
-
-## Quick Start
-
-### Prerequisites
-- Docker & Docker Compose
-- Node.js 20+ (for local frontend development)
-- Python 3.12+ (for local backend development)
-
-### 1. Clone and Configure
+### Step 1: Clone and configure
 
 ```bash
-git clone <repository-url>
+git clone <repo-url>
 cd equity-backtesting
 cp .env.example .env
+cp .env.example backend/.env
 ```
 
-### 2. Start with Docker Compose
+### Step 2: Start all services
+
+**Option A — One command (recommended):**
+```bash
+chmod +x scripts/start-dev.sh scripts/e2e-demo.sh
+./scripts/start-dev.sh
+```
+
+**Option B — Docker:**
+```bash
+docker compose up -d --build
+```
+
+### Step 3: Sign in
+
+Open **http://localhost:3000**
+
+- Click **Sign up** to create an account, OR
+- Use demo credentials: `demo@equity.com` / `demo1234`
+
+### Step 4: Load sample data
+
+On the Dashboard, click **"Seed Sample Data"** (loads 226+ NSE companies with OHLCV, fundamentals, ratios).
+
+Or via terminal:
+```bash
+# Get token first by signing in, then:
+curl -X POST http://localhost:8000/api/v1/data/seed \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Or run the seed script:
+```bash
+cd backend && python3 scripts/seed_data.py
+```
+
+### Step 5: Run a backtest
+
+1. Go to **Strategy Builder** (`/strategy`)
+2. Set date range (e.g. 2022-01-01 to 2024-12-31)
+3. Choose rebalance frequency (Monthly / Quarterly / Yearly)
+4. Set portfolio size (e.g. Top 10)
+5. Add filters (Market Cap, ROCE, PAT)
+6. Configure ranking metrics (ROE, ROCE, PE)
+7. Click **Run Backtest**
+
+### Step 6: View results
+
+Results page shows:
+- Equity curve chart
+- Drawdown chart
+- CAGR, Sharpe Ratio, Max Drawdown, Volatility
+- Top winners and losers
+- Portfolio holdings log
+- CSV / Excel / PDF export
+
+### Step 7: Run automated E2E demo
 
 ```bash
-docker compose up -d
+./scripts/e2e-demo.sh
 ```
 
-Services:
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-- **PostgreSQL**: localhost:5432
-- **Redis**: localhost:6379
+This script authenticates, seeds data, runs a backtest, fetches results, and exports CSV.
 
-### 3. Seed Sample Data
+---
 
-Via the Dashboard UI, click **"Seed Sample Data"**, or via API:
-
-```bash
-curl -X POST http://localhost:8000/api/v1/data/seed
-```
-
-### 4. Run a Backtest
-
-1. Navigate to **Strategy Builder** at http://localhost:3000/strategy
-2. Configure parameters, filters, and ranking metrics
-3. Click **Run Backtest**
-4. View results with charts and export reports
-
-## Local Development
-
-### Backend
-
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-# Start PostgreSQL and Redis (or use Docker for just these services)
-export DATABASE_URL=postgresql://backtest:backtest_secret@localhost:5432/equity_backtest
-
-uvicorn app.main:app --reload --port 8000
-```
-
-Seed data locally:
-
-```bash
-python scripts/seed_data.py
-```
-
-Start Celery worker (separate terminal):
-
-```bash
-celery -A app.core.celery_app worker --loglevel=info
-celery -A app.core.celery_app beat --loglevel=info
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## API Endpoints
+## API Endpoints (Canonical)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/stocks` | List companies |
+| POST | `/api/v1/auth/register` | Create account |
+| POST | `/api/v1/auth/login/json` | Sign in |
+| GET | `/api/v1/auth/me` | Current user |
+| **POST** | **`/api/v1/backtest`** | **Run backtest** |
+| **GET** | **`/api/v1/results?backtest_id=`** | **Get results** |
+| **GET** | **`/api/v1/stocks`** | **List stocks** |
+| GET | `/api/v1/dashboard` | Dashboard stats |
 | GET | `/api/v1/financials` | Financial statements |
 | GET | `/api/v1/ratios` | Financial ratios |
-| POST | `/api/v1/backtest/run` | Run backtest (async) |
-| POST | `/api/v1/backtest/run/sync` | Run backtest (sync) |
-| GET | `/api/v1/backtest/{id}` | Get backtest status |
-| GET | `/api/v1/backtest/results/{id}` | Get backtest results |
-| GET | `/api/v1/dashboard` | Dashboard statistics |
 | GET | `/api/v1/export/csv?backtest_id=` | Export CSV |
 | GET | `/api/v1/export/excel?backtest_id=` | Export Excel |
 | GET | `/api/v1/export/pdf?backtest_id=` | Export PDF |
 | POST | `/api/v1/data/seed` | Seed sample data |
-| POST | `/api/v1/data/refresh` | Refresh market data |
 | GET | `/health` | Health check |
+
+Interactive docs: **http://localhost:8000/docs**
+
+---
+
+## Backtest Engine Features
+
+| Feature | Supported |
+|---------|-----------|
+| Start / End Date | Yes |
+| Rebalancing | Monthly, Quarterly, Half-Yearly, Yearly |
+| Portfolio Size | Top N stocks (1-100) |
+| Position Sizing | Equal Weight, Market Cap Weight, Metric Weight |
+| Filters | Market Cap, ROCE, PAT, ROE, PE, PB |
+| Ranking | Single metric or multi-factor composite |
+| Compounding | Yes |
+| No Future Data Leakage | Yes |
+| Transaction Logging | Yes |
+| Portfolio Tracking | Yes |
+
+---
+
+## Database Schema
+
+```
+companies          → id, ticker, company_name, sector, market_cap
+stock_prices       → id, company_id, date, open, high, low, close, volume
+financials         → id, company_id, fiscal_year, revenue, profit, assets, liabilities, cashflow
+ratios             → id, company_id, roe, roce, pe, pb, eps, pat, debt_equity, market_cap
+backtests          → id, user_id, user_inputs (JSONB), results (JSONB), status
+portfolio_holdings → id, backtest_id, stock, weight, entry_date, exit_date, returns
+users              → id, email, hashed_password, full_name
+```
+
+---
 
 ## Project Structure
 
 ```
-├── backend/
-│   ├── app/
-│   │   ├── api/routes/       # FastAPI route handlers
-│   │   ├── core/             # Config, database, Celery, logging
-│   │   ├── engine/           # Backtest engine, filters, ranking, analytics
-│   │   ├── models/           # SQLAlchemy ORM models
-│   │   ├── schemas/          # Pydantic request/response schemas
-│   │   ├── services/         # Business logic services
-│   │   ├── tasks/            # Celery background tasks
-│   │   └── data/             # NSE ticker list
-│   ├── scripts/              # Seed and utility scripts
-│   ├── requirements.txt
-│   └── Dockerfile
-├── frontend/
-│   ├── src/
-│   │   ├── app/              # Next.js App Router pages
-│   │   ├── components/       # UI components, charts, layout
-│   │   ├── lib/              # API client, utilities
-│   │   └── store/            # Zustand state management
-│   ├── package.json
-│   └── Dockerfile
-├── docker-compose.yml
-├── .env.example
-└── README.md
+backend/
+  app/
+    api/routes/     → FastAPI endpoints
+    core/           → Config, database, security, JWT
+    engine/         → Backtest engine, filters, ranking, analytics
+    models/         → SQLAlchemy ORM models
+    schemas/        → Pydantic validation
+    services/       → Business logic
+    tasks/          → Celery background jobs
+    data/           → 226+ NSE ticker list
+  scripts/          → seed_data.py
+
+frontend/
+  src/
+    app/            → Pages (dashboard, strategy, results, login, signup)
+    components/     → UI, charts, auth forms
+    lib/            → API client
+    store/          → Zustand state (auth, backtest)
+
+scripts/
+  start-dev.sh      → Start everything locally
+  e2e-demo.sh       → Automated end-to-end demo
+
+docker-compose.yml  → PostgreSQL, Redis, Backend, Frontend, Celery
 ```
 
-## Database Schema
+---
 
-| Table | Key Columns |
-|-------|------------|
-| `companies` | id, ticker, company_name, sector, market_cap |
-| `stock_prices` | id, company_id, date, open, high, low, close, volume |
-| `financials` | id, company_id, fiscal_year, revenue, profit, assets, liabilities, cashflow |
-| `ratios` | id, company_id, roe, roce, pe, pb, eps, pat, debt_equity, market_cap |
-| `backtests` | id, user_inputs (JSONB), results (JSONB), status |
-| `portfolio_holdings` | id, backtest_id, stock, weight, entry_date, exit_date, returns |
+## Sample Data
 
-All tables include performance indexes on frequently queried columns.
+The platform includes 226+ NSE-listed companies:
 
-## Deployment
+| Data | Source | Records (after seed) |
+|------|--------|---------------------|
+| Companies | NSE ticker list | 226 |
+| OHLCV prices | Yahoo Finance (.NS) | ~295,000 |
+| Financials | Yahoo Finance + synthetic | 226 |
+| Ratios (5yr history) | Yahoo Finance + synthetic | 1,130 |
 
-### Production Docker Compose
+Synthetic fallback ensures demo works even if Yahoo Finance API is unavailable.
 
-1. Update `.env` with production credentials
-2. Set strong `POSTGRES_PASSWORD`
-3. Configure `CORS_ORIGINS` for your domain
-4. Run:
+---
 
-```bash
-docker compose -f docker-compose.yml up -d --build
+## Environment Variables
+
+```env
+DATABASE_URL=postgresql://backtest:backtest_secret@localhost:5432/equity_backtest
+JWT_SECRET_KEY=change-this-in-production
+CORS_ORIGINS=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:8000
+BACKEND_URL=http://127.0.0.1:8000
 ```
 
-### Environment Variables
+---
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | — |
-| `REDIS_URL` | Redis connection string | — |
-| `CELERY_BROKER_URL` | Celery broker URL | — |
-| `LOG_LEVEL` | Logging level | INFO |
-| `RATE_LIMIT` | API rate limit | 100/minute |
-| `CORS_ORIGINS` | Allowed CORS origins | http://localhost:3000 |
-| `NEXT_PUBLIC_API_URL` | Backend URL for frontend | http://localhost:8000 |
+## Troubleshooting
 
-## Security
+| Problem | Solution |
+|---------|----------|
+| Cannot connect to server | Run `./scripts/start-dev.sh` |
+| Failed to fetch (frontend) | Backend not running; restart services |
+| 401 Unauthorized | Sign in first at `/login` |
+| Empty backtest results | Seed data first, then run backtest |
+| PostgreSQL connection refused | `sudo service postgresql start` |
 
-- Pydantic input validation on all API endpoints
-- Rate limiting via SlowAPI
-- Global exception handling with structured error responses
-- Request logging middleware
-- Environment-based configuration (no hardcoded secrets)
+---
 
 ## License
 
 MIT
-
-
-## Troubleshooting
-
-### "Can't connect to server" / Frontend or API Docs won't load
-
-The app requires **PostgreSQL**, **Redis**, and both **backend** and **frontend** servers to be running.
-
-**Option 1 — One-command local start (no Docker):**
-
-```bash
-./scripts/start-dev.sh
-```
-
-**Option 2 — Docker Compose:**
-
-```bash
-docker compose up -d
-```
-
-**Option 3 — Manual start:**
-
-```bash
-# Terminal 1: Database
-sudo service postgresql start
-sudo service redis-server start
-
-# Terminal 2: Backend
-cd backend && python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-# Terminal 3: Frontend
-cd frontend && npm run dev -- --hostname 0.0.0.0 --port 3000
-```
-
-**Verify services:**
-
-```bash
-curl http://localhost:8000/health   # Should return {"status":"healthy",...}
-curl http://localhost:3000          # Should return HTML
-```
-
-**Common causes:**
-
-| Error | Fix |
-|-------|-----|
-| Connection refused on :8000 | Backend not started, or PostgreSQL not running |
-| Connection refused on :3000 | Frontend not started (`npm run dev`) |
-| `psycopg2.OperationalError` | Start PostgreSQL and create the `equity_backtest` database |
-| Docker not found | Install Docker or use `./scripts/start-dev.sh` instead |

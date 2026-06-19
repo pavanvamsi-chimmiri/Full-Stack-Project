@@ -8,7 +8,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from app.api.routes import auth, backtest, dashboard, data, export, financials, stocks
+from app.api.routes import aliases, auth, backtest, dashboard, data, export, financials, stocks
 from app.core.config import get_settings
 from app.core.database import init_db
 from app.core.logging import get_logger, setup_logging
@@ -63,6 +63,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(aliases.router, prefix="/api/v1")
 app.include_router(stocks.router, prefix="/api/v1")
 app.include_router(financials.router, prefix="/api/v1")
 app.include_router(backtest.router, prefix="/api/v1")
