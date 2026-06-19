@@ -1,17 +1,40 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Use same-origin proxy in browser so remote/cloud access works.
+// Next.js rewrites /api/v1/* -> backend (see next.config.ts).
+function getApiBase(): string {
+  if (typeof window !== "undefined") {
+    return "";
+  }
+  return process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || "http://127.0.0.1:8000";
+}
+
+export class ApiError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}/api/v1${endpoint}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
+  const base = getApiBase();
+  let res: Response;
+
+  try {
+    res = await fetch(`${base}/api/v1${endpoint}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+    });
+  } catch {
+    throw new ApiError(
+      "Cannot reach the backend API. Start the server with ./scripts/start-dev.sh or docker compose up -d"
+    );
+  }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: "Request failed" }));
-    throw new Error(error.detail || `HTTP ${res.status}`);
+    const error = await res.json().catch(() => ({ detail: `Request failed (${res.status})` }));
+    throw new ApiError(typeof error.detail === "string" ? error.detail : `HTTP ${res.status}`);
   }
 
   return res.json();
@@ -119,5 +142,5 @@ export const api = {
     fetchAPI<{ message: string; stats: Record<string, number> }>("/data/seed", { method: "POST" }),
 
   exportUrl: (type: "csv" | "excel" | "pdf", backtestId: number) =>
-    `${API_BASE}/api/v1/export/${type}?backtest_id=${backtestId}`,
+    `/api/v1/export/${type}?backtest_id=${backtestId}`,
 };
