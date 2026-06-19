@@ -233,3 +233,52 @@ docker compose -f docker-compose.yml up -d --build
 ## License
 
 MIT
+
+
+## Troubleshooting
+
+### "Can't connect to server" / Frontend or API Docs won't load
+
+The app requires **PostgreSQL**, **Redis**, and both **backend** and **frontend** servers to be running.
+
+**Option 1 — One-command local start (no Docker):**
+
+```bash
+./scripts/start-dev.sh
+```
+
+**Option 2 — Docker Compose:**
+
+```bash
+docker compose up -d
+```
+
+**Option 3 — Manual start:**
+
+```bash
+# Terminal 1: Database
+sudo service postgresql start
+sudo service redis-server start
+
+# Terminal 2: Backend
+cd backend && python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Terminal 3: Frontend
+cd frontend && npm run dev -- --hostname 0.0.0.0 --port 3000
+```
+
+**Verify services:**
+
+```bash
+curl http://localhost:8000/health   # Should return {"status":"healthy",...}
+curl http://localhost:3000          # Should return HTML
+```
+
+**Common causes:**
+
+| Error | Fix |
+|-------|-----|
+| Connection refused on :8000 | Backend not started, or PostgreSQL not running |
+| Connection refused on :3000 | Frontend not started (`npm run dev`) |
+| `psycopg2.OperationalError` | Start PostgreSQL and create the `equity_backtest` database |
+| Docker not found | Install Docker or use `./scripts/start-dev.sh` instead |
