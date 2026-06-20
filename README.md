@@ -42,8 +42,7 @@ docker compose up -d --build
 
 Open **http://localhost:3000**
 
-- Click **Sign up** to create an account, OR
-- Use demo credentials: `demo@equity.com` / `demo1234`
+- Click **Sign up** to create an account
 
 ### Step 4: Load sample data
 
